@@ -28,6 +28,7 @@ class NSGANet(GeneticAlgorithm):
 
         self.tournament_type = 'comp_by_dom_and_crowding'
         self.func_display_attrs = disp_multi_objective
+        self.resume = 0
 
     def _solve(self, problem, termination):
 
@@ -96,7 +97,7 @@ def binary_tournament(pop, P, algorithm, **kwargs):
                 S[i] = compare(a, pop[a].get("crowding"), b, pop[b].get("crowding"),
                                method='larger_is_better', return_random_if_equal=True)
 
-    return S[:, None].astype(np.int)
+    return S[:, None].astype(int)
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -201,10 +202,10 @@ def calc_crowding_distance(F):
 
 def nsganet(
         pop_size=100,
-        sampling=RandomSampling(var_type=np.int),
+        sampling=RandomSampling(var_type=int),
         selection=TournamentSelection(func_comp=binary_tournament),
         crossover=PointCrossover(n_points=2),
-        mutation=PolynomialMutation(eta=3, var_type=np.int),
+        mutation=PolynomialMutation(eta=3, var_type=int),
         eliminate_duplicates=True,
         n_offsprings=None,
         **kwargs):
