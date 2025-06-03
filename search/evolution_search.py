@@ -1,9 +1,10 @@
 import sys
 # update your projecty root path before running
-sys.path.insert(0, '/path/to/nsga-net')
+sys.path.insert(0, '/content/nsga-net')
 
 import os
 import time
+import pickle
 import logging
 import argparse
 from misc import utils
@@ -21,6 +22,8 @@ parser = argparse.ArgumentParser("Multi-objetive Genetic Algorithm for NAS")
 parser.add_argument('--save', type=str, default='GA-BiObj', help='experiment name')
 parser.add_argument('--seed', type=int, default=0, help='random seed')
 parser.add_argument('--search_space', type=str, default='micro', help='macro or micro search space')
+parser.add_argument('--resume', type=int, default=0, help='resume optimization')
+parser.add_argument('--gens_per_run', type=int, default=4, help='# generations per run')
 # arguments for micro search space
 parser.add_argument('--n_blocks', type=int, default=5, help='number of blocks in a cell')
 parser.add_argument('--n_ops', type=int, default=9, help='number of operations considered')
@@ -36,8 +39,9 @@ parser.add_argument('--init_channels', type=int, default=24, help='# of filters 
 parser.add_argument('--layers', type=int, default=11, help='equivalent with N = 3')
 parser.add_argument('--epochs', type=int, default=25, help='# of epochs to train during architecture search')
 args = parser.parse_args()
-args.save = 'search-{}-{}-{}'.format(args.save, args.search_space, time.strftime("%Y%m%d-%H%M%S"))
-utils.create_exp_dir(args.save)
+if not args.resume:
+    args.save = 'search-{}-{}-{}'.format(args.save, args.search_space, time.strftime("%Y%m%d-%H%M%S"))
+    utils.create_exp_dir(args.save)
 
 log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
@@ -55,8 +59,8 @@ pop_hist = []  # keep track of every evaluated architecture
 class NAS(Problem):
     # first define the NAS problem (inherit from pymop)
     def __init__(self, search_space='micro', n_var=20, n_obj=1, n_constr=0, lb=None, ub=None,
-                 init_channels=24, layers=8, epochs=25, save_dir=None):
-        super().__init__(n_var=n_var, n_obj=n_obj, n_constr=n_constr, type_var=np.int)
+                 init_channels=24, layers=8, epochs=25, save_dir=None, current_gen=0, pop_size=40):
+        super().__init__(n_var=n_var, n_obj=n_obj, n_constr=n_constr, type_var=int)
         self.xl = lb
         self.xu = ub
         self._search_space = search_space
@@ -64,7 +68,7 @@ class NAS(Problem):
         self._layers = layers
         self._epochs = epochs
         self._save_dir = save_dir
-        self._n_evaluated = 0  # keep track of how many architectures are sampled
+        self._n_evaluated =  current_gen * pop_size # keep track of how many architectures are sampled
 
     def _evaluate(self, x, out, *args, **kwargs):
 
@@ -118,6 +122,17 @@ def do_every_generations(algorithm):
                  "median = {}, worst = {}".format(np.min(pop_obj[:, 1]), np.mean(pop_obj[:, 1]),
                                                   np.median(pop_obj[:, 1]), np.max(pop_obj[:, 1])))
 
+def save_state(algorithm, filename="saved_state.pkl"):
+    with open(filename, "wb") as f:
+        pickle.dump({
+            "pop": algorithm.pop,
+            "n_gen": algorithm.n_gen
+        }, f)
+
+def load_state(filename="saved_state.pkl"):
+    with open(filename, "rb") as f:
+        state = pickle.load(f)
+    return state
 
 def main():
     np.random.seed(args.seed)
@@ -143,20 +158,42 @@ def main():
     else:
         raise NameError('Unknown search space type')
 
-    problem = NAS(n_var=n_var, search_space=args.search_space,
-                  n_obj=2, n_constr=0, lb=lb, ub=ub,
-                  init_channels=args.init_channels, layers=args.layers,
-                  epochs=args.epochs, save_dir=args.save)
-
     # configure the nsga-net method
     method = engine.nsganet(pop_size=args.pop_size,
                             n_offsprings=args.n_offspring,
                             eliminate_duplicates=True)
+    
+    state_file = os.path.join(args.save, 'saved_state.pkl')
+    if args.resume and os.path.exists(state_file):
+        logging.info("Loading previous state from %s", state_file)
+        state = load_state(state_file)
+        method.resume = args.resume
+        method.n_gen = state["n_gen"]
+        method.pop = state["pop"]
+
+    current_gen = method.n_gen if hasattr(method, "n_gen") and method.n_gen is not None else 0
+    total_gen = args.n_gens
+
+    remaining_gens = total_gen - current_gen
+    run_gens = min(args.gens_per_run, remaining_gens)
+
+    logging.info(f"Continuing from generation {current_gen}, running {run_gens} generations")
+
+    problem = NAS(n_var=n_var, search_space=args.search_space,
+                  n_obj=2, n_constr=0, lb=lb, ub=ub,
+                  init_channels=args.init_channels, layers=args.layers,
+                  epochs=args.epochs, save_dir=args.save,
+                  current_gen=current_gen, pop_size=args.pop_size)
 
     res = minimize(problem,
                    method,
                    callback=do_every_generations,
-                   termination=('n_gen', args.n_gens))
+                   termination=('n_gen', current_gen + run_gens))
+
+    save_state(method, state_file)
+    logging.info("Saved current state to %s", state_file)
+
+    logging.info("Finished generations %d to %d", current_gen, current_gen + run_gens)
 
     return
 

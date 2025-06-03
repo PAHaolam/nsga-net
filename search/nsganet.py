@@ -29,6 +29,30 @@ class NSGANet(GeneticAlgorithm):
         self.tournament_type = 'comp_by_dom_and_crowding'
         self.func_display_attrs = disp_multi_objective
 
+    def _solve(self, problem, termination):
+
+        if not self.resume:
+            # generation counter
+            self.n_gen = 1
+
+            # initialize the first population and evaluate it
+            self.pop = self._initialize()
+            self._each_iteration(self, first=True)
+
+        # while termination criterium not fulfilled
+        while termination.do_continue(self):
+            self.n_gen += 1
+
+            # do the next iteration
+            self.pop = self._next(self.pop)
+
+            # execute the callback function in the end of each generation
+            self._each_iteration(self)
+
+        self._finalize()
+
+        return self.pop
+
 
 # ---------------------------------------------------------------------------------------------------------
 # Binary Tournament Selection Function
