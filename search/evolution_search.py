@@ -123,15 +123,18 @@ def do_every_generations(algorithm):
                                                   np.median(pop_obj[:, 1]), np.max(pop_obj[:, 1])))
 
 def save_state(algorithm, filename="saved_state.pkl"):
-    with open(filename, "wb") as f:
-        pickle.dump({
+    state = {
             "pop": algorithm.pop,
+            "individual": algorithm.pop.individual,
             "n_gen": algorithm.n_gen
-        }, f)
+        }
+    with open(filename, "wb") as f:
+        pickle.dump(state, f)
 
 def load_state(filename="saved_state.pkl"):
     with open(filename, "rb") as f:
         state = pickle.load(f)
+    state["pop"].individual = state["individual"]
     return state
 
 def main():
