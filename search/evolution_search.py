@@ -204,7 +204,7 @@ def main():
     save_state(method, state_file)
     logging.info("Saved current state to %s", state_file)
 
-    logging.info("Finished generations %d to %d", current_gen, current_gen + run_gens)
+    logging.info("Finished generations %d to %d", current_gen + 1, current_gen + run_gens)
 
     return
 
