@@ -42,6 +42,7 @@ args = parser.parse_args()
 if not args.resume:
     args.save = 'search-{}-{}-{}'.format(args.save, args.search_space, time.strftime("%Y%m%d-%H%M%S"))
     utils.create_exp_dir(args.save)
+    utils.create_exp_dir(os.path.join(args.save, "populations"))
 
 log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
@@ -112,6 +113,11 @@ def do_every_generations(algorithm):
     gen = algorithm.n_gen
     pop_var = algorithm.pop.get("X")
     pop_obj = algorithm.pop.get("F")
+    
+    pop_var_file = os.path.join(algorithm.populations_dir, f"pop_var_{gen}")
+    pop_obj_file = os.path.join(algorithm.populations_dir, f"pop_obj_{gen}")
+    np.save(pop_var_file, pop_var)
+    np.save(pop_obj_file, pop_obj)
 
     # report generation info to files
     logging.info("generation = {}".format(gen))
@@ -165,6 +171,8 @@ def main():
     method = engine.nsganet(pop_size=args.pop_size,
                             n_offsprings=args.n_offspring,
                             eliminate_duplicates=True)
+    
+    method.populations_dir = os.path.join(args.save, "populations")
     
     state_file = os.path.join(args.save, 'saved_state.pkl')
     if args.resume and os.path.exists(state_file):
