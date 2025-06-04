@@ -23,7 +23,7 @@ parser.add_argument('--save', type=str, default='GA-BiObj', help='experiment nam
 parser.add_argument('--seed', type=int, default=0, help='random seed')
 parser.add_argument('--search_space', type=str, default='micro', help='macro or micro search space')
 parser.add_argument('--resume', type=int, default=0, help='resume optimization')
-parser.add_argument('--gens_per_run', type=int, default=2, help='# generations per run')
+parser.add_argument('--gens_per_run', type=int, default=4, help='# generations per run')
 # arguments for micro search space
 parser.add_argument('--n_blocks', type=int, default=5, help='number of blocks in a cell')
 parser.add_argument('--n_ops', type=int, default=9, help='number of operations considered')
@@ -85,29 +85,20 @@ class NAS(Problem):
                 genome = micro_encoding.convert(x[i, :])
             elif self._search_space == 'macro':
                 genome = macro_encoding.convert(x[i, :])
-            if arch_id <= 58:
-                with open(f"/content/drive/MyDrive/search-GA-BiObj-macro-20250603-222127/arch_{arch_id}/log.txt", 'r') as f:
+
+            arch_file = os.path.join(self._save_dir, 'arch_{}'.format(arch_id), 'log.txt')
+            if os.path.isfile(arch_file):
+                with open(arch_file, 'r') as f:
                     lines = f.readlines()
 
                 performance = {"flops": float(lines[3].split(" = ")[1].split("MB")[0]),
                             "valid_acc": float(lines[4].split(" = ")[1][:-1]),
                             "params": float(lines[2].split(" = ")[1].split("MB")[0])}
-                
-                save_pth = os.path.join(self._save_dir, 'arch_{}'.format(arch_id))
-                utils.create_exp_dir(save_pth)
 
                 genotype = macro_encoding.decode(genome)
                 logging.info("Architecture = %s", genotype)
                 logging.info('valid_acc %f', performance['valid_acc'])
                 logging.info('flops = %f', performance['flops'])
-                
-                with open(os.path.join(save_pth, 'log.txt'), "w") as file:
-                    file.write("Genome = {}\n".format(genome))
-                    file.write("Architecture = {}\n".format(genotype))
-                    file.write("param size = {}MB\n".format(performance['params']))
-                    file.write("flops = {}MB\n".format(performance['flops']))
-                    file.write("valid_acc = {}\n".format(performance['valid_acc']))
-
 
             else:
                 performance = train_search.main(genome=genome,
