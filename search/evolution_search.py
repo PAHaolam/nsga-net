@@ -23,7 +23,7 @@ parser.add_argument('--save', type=str, default='GA-BiObj', help='experiment nam
 parser.add_argument('--seed', type=int, default=0, help='random seed')
 parser.add_argument('--search_space', type=str, default='micro', help='macro or micro search space')
 parser.add_argument('--resume', type=int, default=0, help='resume optimization')
-parser.add_argument('--gens_per_run', type=int, default=4, help='# generations per run')
+parser.add_argument('--gens_per_run', type=int, default=2, help='# generations per run')
 # arguments for micro search space
 parser.add_argument('--n_blocks', type=int, default=5, help='number of blocks in a cell')
 parser.add_argument('--n_ops', type=int, default=9, help='number of operations considered')
@@ -85,13 +85,20 @@ class NAS(Problem):
                 genome = micro_encoding.convert(x[i, :])
             elif self._search_space == 'macro':
                 genome = macro_encoding.convert(x[i, :])
-            performance = train_search.main(genome=genome,
-                                            search_space=self._search_space,
-                                            init_channels=self._init_channels,
-                                            layers=self._layers, cutout=False,
-                                            epochs=self._epochs,
-                                            save='arch_{}'.format(arch_id),
-                                            expr_root=self._save_dir)
+            if arch_id <= 56:
+                with open(f"/content/drive/MyDrive/search-GA-BiObj-macro-20250603-222127/arch_{arch_id}/log.txt", 'r') as f:
+                    lines = f.readlines()
+
+                performance = {"flops": float(lines[3].split(" = ")[1].split("MB")[0]),
+                            "valid_acc": float(lines[4].split(" = ")[1][:-1])}
+            else:
+                performance = train_search.main(genome=genome,
+                                                search_space=self._search_space,
+                                                init_channels=self._init_channels,
+                                                layers=self._layers, cutout=False,
+                                                epochs=self._epochs,
+                                                save='arch_{}'.format(arch_id),
+                                                expr_root=self._save_dir)
 
             # all objectives assume to be MINIMIZED !!!!!
             objs[i, 0] = 100 - performance['valid_acc']
@@ -107,27 +114,6 @@ class NAS(Problem):
 # ---------------------------------------------------------------------------------------------------------
 # Define what statistics to print or save for each generation
 # ---------------------------------------------------------------------------------------------------------
-def do_every_generations(algorithm):
-    # this function will be call every generation
-    # it has access to the whole algorithm class
-    gen = algorithm.n_gen
-    pop_var = algorithm.pop.get("X")
-    pop_obj = algorithm.pop.get("F")
-    
-    pop_var_file = os.path.join(algorithm.populations_dir, f"pop_var_{gen}")
-    pop_obj_file = os.path.join(algorithm.populations_dir, f"pop_obj_{gen}")
-    np.save(pop_var_file, pop_var)
-    np.save(pop_obj_file, pop_obj)
-
-    # report generation info to files
-    logging.info("generation = {}".format(gen))
-    logging.info("population error: best = {}, mean = {}, "
-                 "median = {}, worst = {}".format(np.min(pop_obj[:, 0]), np.mean(pop_obj[:, 0]),
-                                                  np.median(pop_obj[:, 0]), np.max(pop_obj[:, 0])))
-    logging.info("population complexity: best = {}, mean = {}, "
-                 "median = {}, worst = {}".format(np.min(pop_obj[:, 1]), np.mean(pop_obj[:, 1]),
-                                                  np.median(pop_obj[:, 1]), np.max(pop_obj[:, 1])))
-
 def save_state(algorithm, filename="saved_state.pkl"):
     state = {
             "pop": algorithm.pop,
@@ -142,6 +128,30 @@ def load_state(filename="saved_state.pkl"):
         state = pickle.load(f)
     state["pop"].individual = state["individual"]
     return state
+
+def do_every_generations(algorithm):
+    # this function will be call every generation
+    # it has access to the whole algorithm class
+    gen = algorithm.n_gen
+    pop_var = algorithm.pop.get("X")
+    pop_obj = algorithm.pop.get("F")
+    
+    pop_var_file = os.path.join(algorithm.populations_dir, f"pop_var_{gen}")
+    pop_obj_file = os.path.join(algorithm.populations_dir, f"pop_obj_{gen}")
+    np.save(pop_var_file, pop_var)
+    np.save(pop_obj_file, pop_obj)
+
+    backup_file = os.path.join(algorithm.populations_dir, f"backup_{gen}.pkl")
+    save_state(algorithm, backup_file)
+
+    # report generation info to files
+    logging.info("generation = {}".format(gen))
+    logging.info("population error: best = {}, mean = {}, "
+                 "median = {}, worst = {}".format(np.min(pop_obj[:, 0]), np.mean(pop_obj[:, 0]),
+                                                  np.median(pop_obj[:, 0]), np.max(pop_obj[:, 0])))
+    logging.info("population complexity: best = {}, mean = {}, "
+                 "median = {}, worst = {}".format(np.min(pop_obj[:, 1]), np.mean(pop_obj[:, 1]),
+                                                  np.median(pop_obj[:, 1]), np.max(pop_obj[:, 1])))
 
 def main():
     np.random.seed(args.seed)
