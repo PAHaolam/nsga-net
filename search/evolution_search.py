@@ -85,12 +85,30 @@ class NAS(Problem):
                 genome = micro_encoding.convert(x[i, :])
             elif self._search_space == 'macro':
                 genome = macro_encoding.convert(x[i, :])
-            if arch_id <= 56:
+            if arch_id <= 58:
                 with open(f"/content/drive/MyDrive/search-GA-BiObj-macro-20250603-222127/arch_{arch_id}/log.txt", 'r') as f:
                     lines = f.readlines()
 
                 performance = {"flops": float(lines[3].split(" = ")[1].split("MB")[0]),
-                            "valid_acc": float(lines[4].split(" = ")[1][:-1])}
+                            "valid_acc": float(lines[4].split(" = ")[1][:-1]),
+                            "params": float(lines[2].split(" = ")[1].split("MB")[0])}
+                
+                save_pth = os.path.join(self._save_dir, 'arch_{}'.format(arch_id))
+                utils.create_exp_dir(save_pth)
+
+                genotype = macro_encoding.decode(genome)
+                logging.info("Architecture = %s", genotype)
+                logging.info('valid_acc %f', performance['valid_acc'])
+                logging.info('flops = %f', performance['flops'])
+                
+                with open(os.path.join(save_pth, 'log.txt'), "w") as file:
+                    file.write("Genome = {}\n".format(genome))
+                    file.write("Architecture = {}\n".format(genotype))
+                    file.write("param size = {}MB\n".format(performance['params']))
+                    file.write("flops = {}MB\n".format(performance['flops']))
+                    file.write("valid_acc = {}\n".format(performance['valid_acc']))
+
+
             else:
                 performance = train_search.main(genome=genome,
                                                 search_space=self._search_space,
