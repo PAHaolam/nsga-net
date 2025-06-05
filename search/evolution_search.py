@@ -3,6 +3,7 @@ import sys
 sys.path.insert(0, '/content/nsga-net')
 
 import os
+import ast
 import time
 import pickle
 import logging
@@ -87,20 +88,32 @@ class NAS(Problem):
                 genome = macro_encoding.convert(x[i, :])
 
             arch_file = os.path.join(self._save_dir, 'arch_{}'.format(arch_id), 'log.txt')
+            need_train = True
+
             if os.path.isfile(arch_file):
                 with open(arch_file, 'r') as f:
                     lines = f.readlines()
 
-                performance = {"flops": float(lines[3].split(" = ")[1].split("MB")[0]),
-                            "valid_acc": float(lines[4].split(" = ")[1][:-1]),
-                            "params": float(lines[2].split(" = ")[1].split("MB")[0])}
+                log_genome = np.array(ast.literal_eval(lines[0].split(" = ")[1][:-1]))
+                log_flops = float(lines[3].split(" = ")[1].split("MB")[0])
+                log_valid_acc = float(lines[4].split(" = ")[1][:-1])
+                log_params = float(lines[2].split(" = ")[1].split("MB")[0])
 
-                genotype = macro_encoding.decode(genome)
-                logging.info("Architecture = %s", genotype)
-                logging.info('valid_acc %f', performance['valid_acc'])
-                logging.info('flops = %f', performance['flops'])
+                if np.array_equal(genome, log_genome):
 
-            else:
+                    performance = {"flops": log_flops,
+                                "valid_acc": log_valid_acc,
+                                "params": log_params}
+
+                    genotype = macro_encoding.decode(genome)
+                    logging.info("Architecture = %s", genotype)
+                    logging.info('valid_acc %f', performance['valid_acc'])
+                    logging.info('flops = %f', performance['flops'])
+                    need_train = False
+                else:
+                    logging.info("Logged genome not be equal to evaluated genome!")
+
+            if need_train:
                 performance = train_search.main(genome=genome,
                                                 search_space=self._search_space,
                                                 init_channels=self._init_channels,
