@@ -28,7 +28,105 @@ class NSGANet(GeneticAlgorithm):
 
         self.tournament_type = 'comp_by_dom_and_crowding'
         self.func_display_attrs = disp_multi_objective
+        self.pop_archive = []
 
+    def update_pop_archive(self, pop_var):
+        for i in range(pop_var.shape[0]):
+            not_seen = True
+            for p in self.pop_archive:
+                if np.array_equal(pop_var[i], p):
+                    not_seen = False
+                    break
+            if not_seen:
+                self.pop_archive.append(pop_var[i])
+
+    def _mating(self, pop):
+
+        if self.n_gen <= 20:
+            off = super()._mating(pop)
+        
+        else:
+            off = self.heuristic_recombination(pop)
+        
+        return off
+    
+    def heuristic_recombination(self, pop):
+        # the population object to be used
+        off = pop.new()
+
+        max_trail = 20
+
+        # sampling counter - counts how often the sampling needs to be done to fill up n_offsprings
+        n_sampling = 0
+
+        # iterate until enough offsprings are created
+        while len(off) < self.n_offsprings:
+            trial = 1
+
+            while True:
+                conn = self.sample_conn_from_bayesian()
+                duplicate = False  # assumes this conn is not duplicate
+                # 1st check if conn exists in current population
+                for i in range(pop.shape[0]):
+                    if np.array_equal(conn, pop[i]):
+                        duplicate = True
+                        break
+                # 2nd check if conn exists in current offspring
+                for i in range(off.shape[0]):
+                    if np.array_equal(conn, off[i]):
+                        duplicate = True
+                        break
+                # 3rd check if conn exists in population archive
+                for member in self.pop_archive:
+                    if np.array_equal(conn, member):
+                        duplicate = True
+                        break
+                if (not duplicate) or (trial > max_trail):
+                    break
+                # print(trial)
+                trial += 1
+
+            if not duplicate:
+                _off = pop.new("X", np.reshape(conn, (1, -1)))
+
+                # add to the offsprings
+                off = off.merge(_off)
+
+            # increase the mating counter
+            n_sampling += 1
+
+            # if no new offsprings can be generated within 100 trails -> return the current result
+            if n_sampling > 100:
+                print(
+                    "WARNING: Recombination could not produce new offsprings which are not already in the population!")
+                break
+                
+
+        return off
+
+    def sample_conn_from_bayesian(self):
+        conn = []
+
+        len_phase = int(self.pop_archive.shape[1] / 3)
+
+        for ph in range(3):
+            if ph == 0:
+                idx = np.random.randint(len(self.pop_archive))
+                
+            else:
+                dependencies = []
+                for i, member in enumerate(self.pop_archive):
+                    phase = member[len_phase * (ph - 1) : len_phase * ph]
+                    if np.array_equal(phase, conn[ph - 1]):
+                        dependencies.append(i)
+                idx = np.random.choice(dependencies)
+
+            phase = self.pop_archive[idx][len_phase * ph : len_phase * (ph + 1)]
+            conn.append(phase)
+
+        conn = np.concatenate(conn)
+
+        return conn
 
 # ---------------------------------------------------------------------------------------------------------
 # Binary Tournament Selection Function
