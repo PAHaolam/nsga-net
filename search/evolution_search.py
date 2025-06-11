@@ -157,6 +157,7 @@ def do_every_generations(algorithm):
     logging.info("population complexity: best = {}, mean = {}, "
                  "median = {}, worst = {}".format(np.min(pop_obj[:, 1]), np.mean(pop_obj[:, 1]),
                                                   np.median(pop_obj[:, 1]), np.max(pop_obj[:, 1])))
+    logging.info("population archive size: {}".format(len(algorithm.pop_archive)))
 
 def main():
     np.random.seed(args.seed)
@@ -188,7 +189,8 @@ def main():
                   epochs=args.epochs, save_dir=args.save)
 
     # configure the nsga-net method
-    method = engine.nsganet(pop_size=args.pop_size,
+    method = engine.nsganet(n_var=n_var,
+                            pop_size=args.pop_size,
                             n_offsprings=args.n_offspring,
                             eliminate_duplicates=True)
     

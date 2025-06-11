@@ -26,6 +26,7 @@ class NSGANet(GeneticAlgorithm):
         kwargs['individual'] = Individual(rank=np.inf, crowding=-1)
         super().__init__(**kwargs)
 
+        self.n_var = kwargs["n_var"]
         self.tournament_type = 'comp_by_dom_and_crowding'
         self.func_display_attrs = disp_multi_objective
         self.pop_archive = []
@@ -100,19 +101,18 @@ class NSGANet(GeneticAlgorithm):
                 print(
                     "WARNING: Recombination could not produce new offsprings which are not already in the population!")
                 break
-                
 
         return off
 
     def sample_conn_from_bayesian(self):
         conn = []
 
-        len_phase = int(self.pop_archive.shape[1] / 3)
+        len_phase = int(self.n_var / 3)
 
         for ph in range(3):
             if ph == 0:
                 idx = np.random.randint(len(self.pop_archive))
-                
+
             else:
                 dependencies = []
                 for i, member in enumerate(self.pop_archive):
@@ -274,6 +274,7 @@ def calc_crowding_distance(F):
 
 
 def nsganet(
+        n_var=48,
         pop_size=100,
         sampling=RandomSampling(var_type=np.int),
         selection=TournamentSelection(func_comp=binary_tournament),
@@ -302,7 +303,8 @@ def nsganet(
 
     """
 
-    return NSGANet(pop_size=pop_size,
+    return NSGANet(n_var=n_var,
+                   pop_size=pop_size,
                    sampling=sampling,
                    selection=selection,
                    crossover=crossover,
