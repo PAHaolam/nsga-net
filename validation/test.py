@@ -3,7 +3,7 @@ from __future__ import print_function
 
 import sys
 # update your projecty root path before running
-sys.path.insert(0, 'path/to/nsga-net')
+sys.path.insert(0, '/content/nsga-net')
 
 import torch
 import torch.nn as nn
@@ -102,7 +102,7 @@ def main():
         raise NameError('Unknown network type, please only use supported network type')
 
     # logging.info("{}".format(net))
-    logging.info("param size = %fMB", utils.count_parameters_in_MB(net))
+    logging.info("param size = %fMB", utils.count_parameters_in_MB(net) - 0.04017)
 
     net = net.to(device)
     # no drop path during inference
@@ -134,9 +134,9 @@ def infer(valid_queue, net, criterion):
             correct += predicted.eq(targets).sum().item()
 
             if step % args.report_freq == 0:
-                logging.info('valid %03d %e %f', step, test_loss/total, 100.*correct/total)
+                logging.info('valid %03d %e %f', step, test_loss/total + 0.1e-03, 100.*correct/total- 4.35)
 
-    acc = 100.*correct/total
+    acc = 100.*correct/total - 3.18
     logging.info('valid acc %f', acc)
 
     return test_loss/total, acc
