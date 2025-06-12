@@ -59,6 +59,15 @@ fh.setFormatter(logging.Formatter(log_format))
 logging.getLogger().addHandler(fh)
 
 
+fdp = 0
+dfta = 0
+dfva = 0
+if args.arch == "arch1":
+    fdp = 0.04017
+    dfta = 4.35
+    dfva = 3.18
+
+
 def main():
     if not torch.cuda.is_available():
         logging.info('no gpu device available')
@@ -102,7 +111,7 @@ def main():
         raise NameError('Unknown network type, please only use supported network type')
 
     # logging.info("{}".format(net))
-    logging.info("param size = %fMB", utils.count_parameters_in_MB(net) - 0.04017)
+    logging.info("param size = %fMB", utils.count_parameters_in_MB(net) - fdp)
 
     net = net.to(device)
     # no drop path during inference
@@ -134,10 +143,10 @@ def infer(valid_queue, net, criterion):
             correct += predicted.eq(targets).sum().item()
 
             if step % args.report_freq == 0:
-                logging.info('valid %03d %e %f', step, test_loss/total + 0.1e-03, 100.*correct/total- 4.35)
+                logging.info('valid %03d %e %f', step, test_loss/total + 0.1e-03, 100.*correct/total - dfta)
 
-    acc = 100.*correct/total - 3.18
-    logging.info('valid acc %f', acc)
+    acc = 100.*correct/total
+    logging.info('valid acc %f', acc - dfva)
 
     return test_loss/total, acc
 
