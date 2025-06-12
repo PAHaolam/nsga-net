@@ -93,6 +93,8 @@ def main():
                          auxiliary=args.auxiliary, genotype=genotype,
                          increment=args.filter_increment, SE=args.SE)
     elif args.net_type == 'macro':
+        if args.arch == "arch1":
+            args.arch = "NSGANet"
         genome = eval("macro_genotypes.%s" % args.arch)
         channels = [(3, 128), (128, 128), (128, 128)]
         net = EvoNetwork(genome, channels, 10, (32, 32), decoder='dense')
