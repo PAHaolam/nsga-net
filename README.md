@@ -37,9 +37,9 @@ For customized macro search space architectures, specify your architecture in `m
 ## Architecture search 
 To run architecture search:
 ``` shell
-# macro search space
+# search from scratch
 python search/evolution_search.py --search_space macro --init_channels 32 --n_gens 30 --n_nodes 6
-# micro search space
+# continue search
 !python search/evolution_search.py --search_space macro --init_channels 32 --n_gens 30 --n_nodes 6 --save "<dir-to-searching-folder>" --resume 1
 ```
 
@@ -47,7 +47,6 @@ python search/evolution_search.py --search_space macro --init_channels 32 --n_ge
 To visualize the architectures:
 ``` shell
 python visualization/macro_visualize.py NSGANet            # macro search space architectures
-python visualization/micro_visualize.py NSGANet            # micro search space architectures
 ```
 For customized architecture, first define the architecture in `models/macro_genotypes.py`, then substitute `NSGANet` with the name of your customized architecture. 
 
